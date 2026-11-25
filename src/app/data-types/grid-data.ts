@@ -26,6 +26,23 @@ export class GridData {
         return this.height > 1 ? (this.extent[3] - this.extent[1]) / (this.height - 1) : 0;
     }
 
+    /** Value at a longitude/latitude, blended from the four grid points around it; NaN outside. */
+    valueAt(lon: number, lat: number): number {
+        const column = this.cellWidth > 0 ? (lon - this.extent[0]) / this.cellWidth : 0;
+        const row = this.cellHeight > 0 ? (this.extent[3] - lat) / this.cellHeight : 0;
+        if (column < 0 || row < 0 || column > this.width - 1 || row > this.height - 1) {
+            return Number.NaN;
+        }
+        const left = Math.min(Math.floor(column), this.width - 2);
+        const top = Math.min(Math.floor(row), this.height - 2);
+        const tx = column - left;
+        const ty = row - top;
+        const at = (r: number, c: number): number => this.values[r * this.width + c];
+        const north = at(top, left) * (1 - tx) + at(top, left + 1) * tx;
+        const south = at(top + 1, left) * (1 - tx) + at(top + 1, left + 1) * tx;
+        return north * (1 - ty) + south * ty;
+    }
+
     /** Converts one parameter of a CoverageJSON grid with a single time and vertical level. */
     static fromCoverage(coverage: Coverage, parameterName: string): GridData {
         const {x, y} = coverage.domain.axes;

@@ -66,6 +66,12 @@
                             <b>{{ hour.rainMm | number: "1.1-1" }}</b>
                             <span>mm rain</span>
                         </div>
+                        @if (!isNaN(hour.windMs)) {
+                            <div>
+                                <b>{{ hour.windMs | number: "1.0-0" }}</b>
+                                <span>m/s wind</span>
+                            </div>
+                        }
                     </div>
                 </div>
             }

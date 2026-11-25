@@ -7,6 +7,10 @@ import {describeEdrError} from "../edr/edr-error";
 import {EdrGridSource, LOAD_ERROR_PROPERTY} from "../edr/edr-grid-source";
 import {LegendData} from "../types/legend.type";
 import {BitmapLayer} from "../visualizations/bitmap/bitmap-layer";
+import {WindArrowLayer} from "../visualizations/wind-arrows/wind-arrow-layer";
+
+/** Layers that can have a legend; all of them draw data from an `EdrGridSource`. */
+type DataLayer = BitmapLayer | WindArrowLayer;
 
 /** A layer with a legend, and whether it is shown. */
 export interface LegendLayer {
@@ -71,7 +75,7 @@ export class MapLayersHelperService {
     /** Fills `legendLayers` with the layers that have a legend, bottom layer first. */
     public collectLegends(map: OlMap): void {
         this.legendLayersSignal.set(
-            this.legendBitmapLayers(map).map(layer => ({
+            this.legendDataLayers(map).map(layer => ({
                 legend: layer.getLegend()!,
                 visible: layer.getVisible(),
             }))
@@ -83,7 +87,7 @@ export class MapLayersHelperService {
         if (!this.map) {
             return;
         }
-        this.legendBitmapLayers(this.map)
+        this.legendDataLayers(this.map)
             .find(layer => layer.getLegend()?.title === title)
             ?.setVisible(visible);
         this.legendLayersSignal.update(layers =>
@@ -155,7 +159,7 @@ export class MapLayersHelperService {
             return;
         }
         this.placeForecastSignal.set({lon, lat, series: [], loading: true});
-        const requests = this.legendBitmapLayers(this.map)
+        const requests = this.legendDataLayers(this.map)
             .filter(layer => layer.getSource() !== null)
             .map(layer => {
                 const source = layer.getSource()!;
@@ -187,10 +191,10 @@ export class MapLayersHelperService {
         this.placeForecastSignal.set(undefined);
     }
 
-    private legendBitmapLayers(map: OlMap): BitmapLayer[] {
+    private legendDataLayers(map: OlMap): DataLayer[] {
         return map
             .getAllLayers()
-            .filter(layer => layer instanceof BitmapLayer)
+            .filter(layer => layer instanceof BitmapLayer || layer instanceof WindArrowLayer)
             .filter(layer => layer.getLegend() !== undefined);
     }
 

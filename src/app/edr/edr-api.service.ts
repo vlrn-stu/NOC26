@@ -1,7 +1,12 @@
 import {HttpClient, HttpParams} from "@angular/common/http";
 import {Injectable, inject} from "@angular/core";
 import {map, Observable} from "rxjs";
-import {Coverage, PointCoverage, PointCoverageCollection} from "../types/coverage-json.type";
+import {
+    Coverage,
+    CoverageCollection,
+    PointCoverage,
+    PointCoverageCollection,
+} from "../types/coverage-json.type";
 import {EdrCollection} from "../types/edr-collection.type";
 import {EdrNoDataError} from "./edr-error";
 import {EdrParameter} from "../types/edr-parameters.type";
@@ -29,6 +34,28 @@ export class EdrApiService {
     }
 
     /**
+     * Like `getCube`, for a parameter with `components`: one coverage per component, in the order
+     * of `components`.
+     */
+    getVectorCube(parameter: EdrParameter, bbox: LonLatBbox, time: string): Observable<Coverage[]> {
+        const url = `${this.collectionUrl(parameter)}/cube`;
+        const params = this.queryParams(parameter, time).set("bbox", bbox.join(","));
+        return this.http.get<Coverage | CoverageCollection | null>(url, {params}).pipe(
+            map(requireData),
+            map(answer => {
+                const coverages = answer.type === "CoverageCollection" ? answer.coverages : [answer];
+                return (parameter.components ?? []).map(name => {
+                    const coverage = coverages.find(item => item.ranges[name] !== undefined);
+                    if (!coverage) {
+                        throw new Error(`Component '${name}' is missing in the answer`);
+                    }
+                    return coverage;
+                });
+            })
+        );
+    }
+
+    /**
      * Fetches the values of `parameter` at one point for every time from `start` to `end` (ISO
      * 8601), keyed by time; `NaN` where the dataset has no value. The EDR position query needs
      * `crs=CRS:84`; without it the service answers 204.
@@ -49,14 +76,31 @@ export class EdrApiService {
             map(requireData),
             map(answer => {
                 const coverages = answer.type === "CoverageCollection" ? answer.coverages : [answer];
-                const values = new Map<string, number>();
+                const names = parameter.components ?? [parameter.parameterName];
+                // Value of every requested parameter name at every time.
+                const series = names.map(() => new Map<string, number>());
                 for (const coverage of coverages) {
-                    const range = coverage.ranges[parameter.parameterName];
-                    (coverage.domain.axes.t?.values ?? []).forEach((time, index) =>
-                        values.set(time, range?.values[index] ?? Number.NaN)
+                    names.forEach((name, nameIndex) => {
+                        const range = coverage.ranges[name];
+                        if (range) {
+                            (coverage.domain.axes.t?.values ?? []).forEach((time, index) =>
+                                series[nameIndex].set(time, range.values[index] ?? Number.NaN)
+                            );
+                        }
+                    });
+                }
+                if (series.length === 1) {
+                    return series[0];
+                }
+                // A vector: its length, e.g. the wind speed from its u and v components.
+                const lengths = new Map<string, number>();
+                for (const time of series[0].keys()) {
+                    lengths.set(
+                        time,
+                        Math.hypot(...series.map(values => values.get(time) ?? Number.NaN))
                     );
                 }
-                return values;
+                return lengths;
             })
         );
     }
@@ -75,7 +119,7 @@ export class EdrApiService {
 
     private queryParams(parameter: EdrParameter, time: string): HttpParams {
         let params = new HttpParams()
-            .set("parameter-name", parameter.parameterName)
+            .set("parameter-name", (parameter.components ?? [parameter.parameterName]).join(","))
             .set("crs", CUBE_QUERY.crs)
             .set("f", CUBE_QUERY.format)
             .set("datetime", time);

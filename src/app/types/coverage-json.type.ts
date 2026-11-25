@@ -54,6 +54,12 @@ export interface Coverage {
     ranges: Record<string, NdArray>;
 }
 
+/** A cube query for several parameters answers with one coverage per parameter. */
+export interface CoverageCollection {
+    type: "CoverageCollection";
+    coverages: Coverage[];
+}
+
 /** One point of the EDR position query: the values of every parameter there, one per time. */
 export interface PointCoverage {
     type: "Coverage";

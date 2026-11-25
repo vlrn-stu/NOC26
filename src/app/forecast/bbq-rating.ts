@@ -9,6 +9,8 @@ export interface ForecastHour {
     time: string;
     temperatureC: number;
     rainMm: number;
+    /** NaN when the map has no wind layer. */
+    windMs: number;
     rating: HourRating;
 }
 
@@ -37,6 +39,7 @@ export function forecastHours(
     times: string[],
     temperatureK: Map<string, number>,
     rainMm: Map<string, number>,
+    windMs: Map<string, number>,
     rules: BbqRules
 ): ForecastHour[] {
     return times.map(time => {
@@ -46,6 +49,7 @@ export function forecastHours(
             time,
             temperatureC: kelvin - KELVIN_AT_0_CELSIUS,
             rainMm: rain,
+            windMs: windMs.get(time) ?? Number.NaN,
             rating: rateHour(kelvin, rain, rules),
         };
     });

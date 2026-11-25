@@ -11,4 +11,10 @@ export interface EdrParameter {
     collectionId: string;
     parameterName: string;
     z?: string;
+    /**
+     * For vector quantities such as wind: the EDR parameter names of the east (u) and north (v)
+     * components, requested together. `parameterName` then only names the combined quantity and is
+     * not sent; point values are the vector's length (e.g. wind speed).
+     */
+    components?: [u: string, v: string];
 }

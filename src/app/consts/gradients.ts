@@ -34,3 +34,14 @@ export const PRECIPITATION_GRADIENT_IN_MM: Gradient = [
     {value: 10, color: [190, 20, 90, 255]},
     {value: 20, color: [140, 30, 200, 255]},
 ];
+
+/** Wind speed in m/s, from calm to storm. */
+export const WIND_GRADIENT_IN_MS: Gradient = [
+    {value: 0, color: [235, 240, 250, 255]},
+    {value: 3, color: [150, 215, 255, 255]},
+    {value: 6, color: [90, 230, 140, 255]},
+    {value: 10, color: [255, 225, 60, 255]},
+    {value: 15, color: [255, 140, 40, 255]},
+    {value: 20, color: [235, 45, 45, 255]},
+    {value: 30, color: [170, 40, 200, 255]},
+];

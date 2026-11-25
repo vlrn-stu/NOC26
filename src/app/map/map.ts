@@ -18,7 +18,11 @@ import {fromLonLat, transformExtent} from "ol/proj";
 import OSM from "ol/source/OSM";
 import {BBQ_RULES} from "../consts/bbq";
 import {ALADIN_SLOVAKIA} from "../consts/datasets";
-import {PRECIPITATION_GRADIENT_IN_MM, TEMPERATURE_GRADIENT_IN_KELVIN} from "../consts/gradients";
+import {
+    PRECIPITATION_GRADIENT_IN_MM,
+    TEMPERATURE_GRADIENT_IN_KELVIN,
+    WIND_GRADIENT_IN_MS,
+} from "../consts/gradients";
 import {ALADIN_PARAMETERS} from "../consts/parameters";
 import {PLACES} from "../consts/places";
 import {EdrApiService} from "../edr/edr-api.service";
@@ -29,6 +33,7 @@ import {TimeSliderComponent} from "../time-slider/time-slider";
 import {Place} from "../types/places.type";
 import {BitmapLayer} from "../visualizations/bitmap/bitmap-layer";
 import {LegendComponent} from "../visualizations/legend/legend";
+import {WindArrowLayer} from "../visualizations/wind-arrows/wind-arrow-layer";
 import {MapLayersHelperService} from "./map-layers-helper.service";
 
 const KELVIN_AT_0_CELSIUS = 273.15;
@@ -70,6 +75,7 @@ export class MapComponent implements OnDestroy {
             this.mapLayersHelper.availableTimes(),
             values(ALADIN_PARAMETERS.temperature2m.parameterName),
             values(ALADIN_PARAMETERS.precipitation1h.parameterName),
+            values(ALADIN_PARAMETERS.wind10m.parameterName),
             BBQ_RULES
         );
     });
@@ -148,6 +154,11 @@ export class MapComponent implements OnDestroy {
                 gradientMode: "stepped",
                 opacity: 0.85,
                 legend: {title: "Rain [mm/h]", formatValue: formatNumber},
+            }),
+            new WindArrowLayer({
+                source: new EdrGridSource(this.edrApiService, ALADIN_PARAMETERS.wind10m, time),
+                gradient: WIND_GRADIENT_IN_MS,
+                legend: {title: "Wind [m/s]", formatValue: formatNumber},
             }),
         ];
     }

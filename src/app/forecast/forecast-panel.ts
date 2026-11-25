@@ -44,6 +44,10 @@ export class ForecastPanelComponent {
         return Date.parse(time) + 60 * 60 * 1000;
     }
 
+    protected isNaN(value: number): boolean {
+        return Number.isNaN(value);
+    }
+
     protected celsius(value: number): string {
         const rounded = Math.round(value);
         return String(Object.is(rounded, -0) ? 0 : rounded);

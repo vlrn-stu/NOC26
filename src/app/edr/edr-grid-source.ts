@@ -67,6 +67,28 @@ export class EdrGridSource extends Source {
         );
     }
 
+    /**
+     * Fetches the grids of the east (u) and north (v) components of a vector parameter (one with
+     * `components`, e.g. wind) inside `bbox`. Updates `getLoadError()` like `getGridData`.
+     */
+    getVectorData(bbox: LonLatBbox, time: string): Observable<{u: GridData; v: GridData}> {
+        const components = this.parameter.components;
+        if (!components) {
+            throw new Error(`'${this.parameter.parameterName}' has no vector components`);
+        }
+        const [uName, vName] = components;
+        return this.edrApiService.getVectorCube(this.parameter, bbox, time).pipe(
+            map(([uCoverage, vCoverage]) => ({
+                u: GridData.fromCoverage(uCoverage, uName),
+                v: GridData.fromCoverage(vCoverage, vName),
+            })),
+            tap({
+                next: () => this.set(LOAD_ERROR_PROPERTY, undefined),
+                error: (error: unknown) => this.set(LOAD_ERROR_PROPERTY, describeEdrError(error)),
+            })
+        );
+    }
+
     /** What the source fetches. */
     getParameter(): EdrParameter {
         return this.parameter;
