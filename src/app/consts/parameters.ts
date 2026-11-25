@@ -7,6 +7,6 @@ export const ALADIN_PARAMETERS = {
         dataset: ALADIN_SLOVAKIA,
         collectionId: "sd:SHMU-Aladin-Slovakia_height-above-ground_2",
         parameterName: "temperature",
-        z: "nevjemus",
+        z: "2",
     },
 } satisfies Record<string, EdrParameter>;

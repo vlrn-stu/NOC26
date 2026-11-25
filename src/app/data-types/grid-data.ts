@@ -43,7 +43,7 @@ export class GridData {
         for (let row = 0; row < y.num; row++) {
             const sourceRow = southFirst ? y.num - 1 - row : row;
             for (let column = 0; column < x.num; column++) {
-                const value = range.values[column * y.num + sourceRow];
+                const value = range.values[sourceRow * x.num + column];
                 values[row * x.num + column] = value ?? Number.NaN;
             }
         }

@@ -38,7 +38,8 @@ export class MapComponent implements OnDestroy {
         return new OlMap({
             target,
             layers: this.createLayers(),
-            view: new View({center: fromLonLat([0, 0]), zoom: 7, rotation: 1}),
+            // Centred on Slovakia.
+            view: new View({center: fromLonLat([19.7, 48.7]), zoom: 7}),
         });
     }
 
@@ -49,7 +50,7 @@ export class MapComponent implements OnDestroy {
             new BitmapLayer({
                 source: new EdrGridSource(this.edrApiService, ALADIN_PARAMETERS.temperature2m),
                 gradient: TEMPERATURE_GRADIENT_IN_KELVIN,
-                gradientMode: "linaer",
+                gradientMode: "linear",
                 opacity: 0.7,
             }),
         ];

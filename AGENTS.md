@@ -13,10 +13,6 @@ Before adding or changing a feature, read [.agents/skills/extend-weather-map/SKI
 - Layers are static: configure them through constructor options, without setters or update methods.
 - `EdrParameter` is the only parameter type. For composite parameters (e.g. wind with U and V components), extend `EdrParameter` and add the parameter to `ALADIN_PARAMETERS` (or to a constant of the same type for another dataset) instead of creating new parameter types or constants.
 
-## Fixing bugs
-
-When a student reports that something is broken or asks to fix bugs, read [.agents/skills/debugging/SKILL.md](.agents/skills/debugging/SKILL.md) first. Fix one bug per request, only the one behind the reported symptom, and do not look for or mention the others.
-
 ## No tests
 
 This repository intentionally has no tests. Do not create test files (`*.spec.ts`, `*.test.ts`, e2e tests), install testing packages, or add test scripts or configuration. To check a change, run `npm run build` and look at the app with `npm start`.
