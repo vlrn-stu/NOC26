@@ -82,9 +82,9 @@ export class EdrGridSource extends Source {
         return this.edrApiService.getTimes(this.parameter);
     }
 
-    /** The parameter's value at one point at `time`, `NaN` where there is no data. */
-    getValueAt(lon: number, lat: number, time: string): Observable<number> {
-        return this.edrApiService.getPointValue(this.parameter, lon, lat, time);
+    /** The parameter's values at one point from `start` to `end`, keyed by time. */
+    getSeriesAt(lon: number, lat: number, start: string, end: string): Observable<Map<string, number>> {
+        return this.edrApiService.getPointSeries(this.parameter, lon, lat, start, end);
     }
 
     /**

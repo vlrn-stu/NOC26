@@ -1,0 +1,108 @@
+<header>
+    <svg class="logo" viewBox="0 0 24 24" aria-hidden="true">
+        <path
+            d="M12 2.2c.7 3 4.9 5.4 4.9 10.3a4.9 4.9 0 0 1-9.8 0c0-2.4 1.3-3.8 2.4-4.9.1 1.9.9 3.1 2.1 3.5-.5-2.9-.2-5.7.4-8.9z"
+        />
+    </svg>
+    <div>
+        <h1>Grill or not?</h1>
+        <p>Slovakia · hour by hour · SHMU ALADIN</p>
+    </div>
+</header>
+
+<nav class="picks" aria-label="Towns">
+    @for (place of quickPicks(); track place.name) {
+        <button type="button" (click)="pickPlace.emit(place)">{{ place.name }}</button>
+    }
+</nav>
+
+@if (forecast(); as forecast) {
+    <section class="place">
+        <div class="place-head">
+            <div>
+                <h2>{{ placeName() ?? "Chosen place" }}</h2>
+                <span class="coords"
+                    >{{ forecast.lat | number: "1.2-2" }}° N · {{ forecast.lon | number: "1.2-2" }}°
+                    E</span
+                >
+            </div>
+            <button type="button" class="close" (click)="closePlace.emit()" aria-label="Close">×</button>
+        </div>
+
+        @if (forecast.loading) {
+            <div class="status">Loading forecast…</div>
+        } @else if (forecast.error) {
+            <div class="status error">{{ forecast.error }}</div>
+        } @else {
+            @if (selectedHour(); as hour) {
+                <div class="now" [attr.data-rating]="hour.rating">
+                    <div class="verdict">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            @switch (hour.rating) {
+                                @case ("good") {
+                                    <path
+                                        d="M12 2.2c.7 3 4.9 5.4 4.9 10.3a4.9 4.9 0 0 1-9.8 0c0-2.4 1.3-3.8 2.4-4.9.1 1.9.9 3.1 2.1 3.5-.5-2.9-.2-5.7.4-8.9z"
+                                    />
+                                }
+                                @case ("rain") {
+                                    <path d="M12 3s-6 7-6 11a6 6 0 0 0 12 0c0-4-6-11-6-11z" />
+                                }
+                                @default {
+                                    <path d="M10 4a2 2 0 1 1 4 0v9.5a4 4 0 1 1-4 0z" />
+                                }
+                            }
+                        </svg>
+                        <div>
+                            <strong>{{ verdict() }}</strong>
+                            <span>{{ hour.time | date: "EEE d MMM, HH:mm" }}</span>
+                        </div>
+                    </div>
+                    <div class="numbers">
+                        <div>
+                            <b>{{ celsius(hour.temperatureC) }}°</b>
+                            <span>air</span>
+                        </div>
+                        <div>
+                            <b>{{ hour.rainMm | number: "1.1-1" }}</b>
+                            <span>mm rain</span>
+                        </div>
+                    </div>
+                </div>
+            }
+
+            <div class="best">
+                @if (bestWindow(); as window) {
+                    <span class="best-label">Best time</span>
+                    <button type="button" (click)="selectedTime.set(window.start)">
+                        {{ window.start | date: "EEE d MMM, HH:mm" }}–{{
+                            hourAfter(window.end) | date: "HH:mm"
+                        }}
+                        <em>{{ window.hours }} h</em>
+                    </button>
+                } @else if (warmestDryHour(); as hour) {
+                    <span class="best-label">Warmest dry</span>
+                    <button type="button" class="fallback" (click)="selectedTime.set(hour.time)">
+                        {{ hour.time | date: "EEE d MMM, HH:mm" }}
+                        <em>{{ celsius(hour.temperatureC) }}°</em>
+                    </button>
+                    <span class="none">No hour reaches grill weather</span>
+                } @else {
+                    <span class="best-label">Best time</span>
+                    <span class="none">No dry daytime hour in the forecast</span>
+                }
+            </div>
+
+            <app-forecast-chart [hours]="hours()" [(selectedTime)]="selectedTime" />
+            <div class="key">
+                <span class="good">grill</span>
+                <span class="rain">rain</span>
+                <span class="cold">cold</span>
+                <span class="line">°C</span>
+                <span class="bars">mm/h</span>
+                <span class="count">{{ goodHours() }} grill h</span>
+            </div>
+        }
+    </section>
+} @else {
+    <p class="hint">Tap the map or a town.</p>
+}

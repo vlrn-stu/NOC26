@@ -1,0 +1,87 @@
+:host {
+    display: block;
+}
+
+.chart {
+    position: relative;
+    height: 132px;
+    cursor: crosshair;
+    touch-action: none;
+    user-select: none;
+}
+
+svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+}
+
+.cursor {
+    fill: rgba(255, 255, 255, 0.12);
+}
+
+.day {
+    stroke: rgba(255, 255, 255, 0.18);
+    vector-effect: non-scaling-stroke;
+}
+
+.freezing {
+    stroke: rgba(140, 200, 255, 0.45);
+    stroke-dasharray: 3 3;
+    vector-effect: non-scaling-stroke;
+}
+
+.rain {
+    fill: #4ea1ff;
+}
+
+.temperature {
+    fill: none;
+    stroke: #ff7a1a;
+    stroke-width: 2.25;
+    stroke-linejoin: round;
+    vector-effect: non-scaling-stroke;
+}
+
+.rating {
+    fill: #3a3f4b;
+}
+
+.rating[data-rating="good"] {
+    fill: #ff8a2b;
+}
+
+.rating[data-rating="rain"] {
+    fill: #3d7fd9;
+}
+
+.rating[data-rating="cold"] {
+    fill: #8fa3bf;
+}
+
+.label {
+    position: absolute;
+    left: 2px;
+    transform: translateY(-50%);
+    padding: 0 4px;
+    border-radius: 4px;
+    background: rgba(18, 20, 26, 0.75);
+    font-size: 11px;
+    color: #ffb07a;
+    pointer-events: none;
+}
+
+.days {
+    position: relative;
+    height: 16px;
+    margin-top: 4px;
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.days span {
+    position: absolute;
+    padding-left: 3px;
+    white-space: nowrap;
+}

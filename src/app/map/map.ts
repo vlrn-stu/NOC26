@@ -1,4 +1,3 @@
-import {DecimalPipe, DatePipe} from "@angular/common";
 import {
     Component,
     ElementRef,
@@ -18,12 +17,16 @@ import TileLayer from "ol/layer/Tile";
 import {fromLonLat, transformExtent} from "ol/proj";
 import OSM from "ol/source/OSM";
 import {BBQ_RULES} from "../consts/bbq";
-import {PRECIPITATION_GRADIENT_IN_MM, TEMPERATURE_GRADIENT_IN_KELVIN} from "../consts/gradients";
 import {ALADIN_SLOVAKIA} from "../consts/datasets";
+import {PRECIPITATION_GRADIENT_IN_MM, TEMPERATURE_GRADIENT_IN_KELVIN} from "../consts/gradients";
 import {ALADIN_PARAMETERS} from "../consts/parameters";
-import {EdrGridSource} from "../edr/edr-grid-source";
+import {PLACES} from "../consts/places";
 import {EdrApiService} from "../edr/edr-api.service";
+import {EdrGridSource} from "../edr/edr-grid-source";
+import {bestGrillWindow, forecastHours, placeName, warmestDryHour} from "../forecast/bbq-rating";
+import {ForecastPanelComponent} from "../forecast/forecast-panel";
 import {TimeSliderComponent} from "../time-slider/time-slider";
+import {Place} from "../types/places.type";
 import {BitmapLayer} from "../visualizations/bitmap/bitmap-layer";
 import {LegendComponent} from "../visualizations/legend/legend";
 import {MapLayersHelperService} from "./map-layers-helper.service";
@@ -34,10 +37,11 @@ const KELVIN_AT_0_CELSIUS = 273.15;
     selector: "app-map",
     templateUrl: "./map.html",
     styleUrl: "./map.css",
-    imports: [LegendComponent, TimeSliderComponent, DatePipe, DecimalPipe],
+    imports: [ForecastPanelComponent, LegendComponent, TimeSliderComponent],
 })
 export class MapComponent implements OnDestroy {
     protected readonly mapLayersHelper: MapLayersHelperService;
+    protected readonly places = PLACES;
 
     /**
      * The forecast hour every layer shows. Keeps the user's choice while it is still available;
@@ -54,27 +58,34 @@ export class MapComponent implements OnDestroy {
         },
     });
 
-    /** Whether the clicked place is good for a barbecue at the selected hour. */
-    protected readonly bbqVerdict = computed(() => {
-        const values = this.mapLayersHelper.pointInfo()?.values ?? [];
-        const raw = (parameterName: string): number =>
-            values.find(value => value.parameterName === parameterName)?.raw ?? Number.NaN;
-        const kelvin = raw(ALADIN_PARAMETERS.temperature2m.parameterName);
-        const rain = raw(ALADIN_PARAMETERS.precipitation1h.parameterName);
-        if (Number.isNaN(kelvin) || Number.isNaN(rain)) {
-            return undefined;
+    /** Every forecast hour at the chosen place, rated for a barbecue. */
+    protected readonly forecastHours = computed(() => {
+        const series = this.mapLayersHelper.placeForecast()?.series ?? [];
+        const values = (parameterName: string): Map<string, number> =>
+            series.find(item => item.parameterName === parameterName)?.values ?? new Map();
+        if (series.length === 0) {
+            return [];
         }
-        if (rain > BBQ_RULES.maxPrecipitationMm) {
-            return {good: false, text: "Rain: the fire won't light"};
-        }
-        if (kelvin < BBQ_RULES.minTemperatureK) {
-            return {good: false, text: "Dry, but too cold to sit outside"};
-        }
-        return {good: true, text: "Grill weather"};
+        return forecastHours(
+            this.mapLayersHelper.availableTimes(),
+            values(ALADIN_PARAMETERS.temperature2m.parameterName),
+            values(ALADIN_PARAMETERS.precipitation1h.parameterName),
+            BBQ_RULES
+        );
+    });
+    protected readonly selectedHour = computed(() =>
+        this.forecastHours().find(hour => hour.time === this.selectedTime())
+    );
+    protected readonly bestWindow = computed(() => bestGrillWindow(this.forecastHours(), BBQ_RULES));
+    protected readonly warmestDryHour = computed(() => warmestDryHour(this.forecastHours(), BBQ_RULES));
+    protected readonly hourRatings = computed(() => this.forecastHours().map(hour => hour.rating));
+    protected readonly placeName = computed(() => {
+        const forecast = this.mapLayersHelper.placeForecast();
+        return forecast ? placeName(forecast.lon, forecast.lat, PLACES) : undefined;
     });
 
     private readonly mapContainer = viewChild.required<ElementRef<HTMLDivElement>>("mapContainer");
-    private readonly popup = viewChild.required<ElementRef<HTMLDivElement>>("popup");
+    private readonly marker = viewChild.required<ElementRef<HTMLDivElement>>("marker");
     private readonly edrApiService = inject(EdrApiService);
     private map?: OlMap;
 
@@ -86,28 +97,31 @@ export class MapComponent implements OnDestroy {
             this.mapLayersHelper.listenForLoadErrors(this.map);
             this.mapLayersHelper.collectLegends(this.map);
             this.mapLayersHelper.collectAvailableTimes(this.map);
-            this.mapLayersHelper.listenForClicks(this.map, this.popup().nativeElement, () =>
-                this.selectedTime()
-            );
+            this.mapLayersHelper.listenForClicks(this.map, this.marker().nativeElement);
         });
         // The renderers notice the new time in their next frame and fetch it.
         effect(() => {
-            const time = this.selectedTime();
-            // Untracked: updating the popup reads and writes its own state, which must not re-run
-            // this effect.
-            untracked(() => {
-                this.map?.render();
-                this.mapLayersHelper.updatePointInfo(time);
-            });
+            this.selectedTime();
+            untracked(() => this.map?.render());
         });
     }
 
+    protected pickPlace(place: Place): void {
+        this.mapLayersHelper.selectPlace(place.lon, place.lat, true);
+    }
+
+    protected celsius(value: number): string {
+        const rounded = Math.round(value);
+        return String(Object.is(rounded, -0) ? 0 : rounded);
+    }
+
     private createMap(target: HTMLElement): OlMap {
-        // Centred on Slovakia, then zoomed so the whole model area fills the screen.
+        // Centred on Slovakia, then zoomed so the whole model area fills the space beside the panel.
         const view = new View({center: fromLonLat([19.7, 48.7]), zoom: 7});
         const map = new OlMap({target, layers: this.createLayers(), view});
+        const wide = target.clientWidth > 900;
         view.fit(transformExtent(ALADIN_SLOVAKIA.domain, "EPSG:4326", view.getProjection()), {
-            padding: [90, 40, 150, 40],
+            padding: wide ? [40, 40, 150, 440] : [20, 10, 170, 10],
         });
         return map;
     }

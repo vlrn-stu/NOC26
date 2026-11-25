@@ -1,9 +1,30 @@
 <div #mapContainer class="map"></div>
 
-<header class="panel title">
-    <h1>BBQ weather · Slovakia</h1>
-    <p>Click a place to see its temperature and rain.</p>
-</header>
+<div #marker class="marker" [class.hidden]="!mapLayersHelper.placeForecast()">
+    <span class="pin" [attr.data-rating]="selectedHour()?.rating ?? 'unknown'"></span>
+    @if (selectedHour(); as hour) {
+        <span class="bubble" [attr.data-rating]="hour.rating">
+            {{ celsius(hour.temperatureC) }}°
+            @if (hour.rainMm > 0.05) {
+                <small>{{ hour.rainMm.toFixed(1) }} mm</small>
+            }
+        </span>
+    }
+</div>
+
+<app-forecast-panel
+    class="panel side"
+    [places]="places"
+    [placeName]="placeName()"
+    [forecast]="mapLayersHelper.placeForecast()"
+    [hours]="forecastHours()"
+    [selectedHour]="selectedHour()"
+    [bestWindow]="bestWindow()"
+    [warmestDryHour]="warmestDryHour()"
+    [(selectedTime)]="selectedTime"
+    (pickPlace)="pickPlace($event)"
+    (closePlace)="mapLayersHelper.closePlace()"
+/>
 
 @if (mapLayersHelper.loadErrors().length > 0) {
     <div class="load-error" role="alert">
@@ -13,40 +34,29 @@
     </div>
 }
 
-@if (mapLayersHelper.legends().length > 0) {
+@if (mapLayersHelper.legendLayers().length > 0) {
     <aside class="panel legends">
-        @for (legend of mapLayersHelper.legends(); track legend.title) {
-            <app-legend [legend]="legend" />
+        @for (layer of mapLayersHelper.legendLayers(); track layer.legend.title) {
+            <label class="layer" [class.off]="!layer.visible">
+                <input
+                    type="checkbox"
+                    [checked]="layer.visible"
+                    (change)="
+                        mapLayersHelper.setLayerVisible(layer.legend.title, $any($event.target).checked)
+                    "
+                />
+                <app-legend [legend]="layer.legend" />
+            </label>
         }
     </aside>
 }
 
 @if (mapLayersHelper.availableTimes().length > 0) {
     <div class="panel timeline">
-        <app-time-slider [times]="mapLayersHelper.availableTimes()" [(selectedTime)]="selectedTime" />
+        <app-time-slider
+            [times]="mapLayersHelper.availableTimes()"
+            [ratings]="hourRatings()"
+            [(selectedTime)]="selectedTime"
+        />
     </div>
 }
-
-<div #popup class="popup" [class.hidden]="!mapLayersHelper.pointInfo()">
-    @if (mapLayersHelper.pointInfo(); as info) {
-        <button
-            type="button"
-            class="close"
-            (click)="mapLayersHelper.closePointInfo()"
-            aria-label="Close"
-        >
-            ×
-        </button>
-        <div class="when">{{ info.time | date: "EEE d MMM, HH:mm" }}</div>
-        @for (value of info.values; track value.title) {
-            <div class="row">
-                <span>{{ value.title }}</span>
-                <strong [title]="value.error ?? ''">{{ value.value ?? "…" }}</strong>
-            </div>
-        }
-        @if (bbqVerdict(); as verdict) {
-            <div class="verdict" [class.good]="verdict.good">{{ verdict.text }}</div>
-        }
-        <div class="where">{{ info.lat | number: "1.2-2" }}° N, {{ info.lon | number: "1.2-2" }}° E</div>
-    }
-</div>

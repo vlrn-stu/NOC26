@@ -1,7 +1,7 @@
 import {HttpClient, HttpParams} from "@angular/common/http";
 import {Injectable, inject} from "@angular/core";
 import {map, Observable} from "rxjs";
-import {Coverage, PointCoverage} from "../types/coverage-json.type";
+import {Coverage, PointCoverage, PointCoverageCollection} from "../types/coverage-json.type";
 import {EdrCollection} from "../types/edr-collection.type";
 import {EdrNoDataError} from "./edr-error";
 import {EdrParameter} from "../types/edr-parameters.type";
@@ -29,15 +29,35 @@ export class EdrApiService {
     }
 
     /**
-     * Fetches the value of `parameter` at one point at `time`, or `NaN` where the dataset has no
-     * value. The EDR position query needs `crs=CRS:84`; without it the service answers 204.
+     * Fetches the values of `parameter` at one point for every time from `start` to `end` (ISO
+     * 8601), keyed by time; `NaN` where the dataset has no value. The EDR position query needs
+     * `crs=CRS:84`; without it the service answers 204.
      */
-    getPointValue(parameter: EdrParameter, lon: number, lat: number, time: string): Observable<number> {
+    getPointSeries(
+        parameter: EdrParameter,
+        lon: number,
+        lat: number,
+        start: string,
+        end: string
+    ): Observable<Map<string, number>> {
         const url = `${this.collectionUrl(parameter)}/position`;
-        const params = this.queryParams(parameter, time).set("coords", `POINT(${lon} ${lat})`);
-        return this.http.get<PointCoverage | null>(url, {params}).pipe(
+        const params = this.queryParams(parameter, `${start}/${end}`).set(
+            "coords",
+            `POINT(${lon} ${lat})`
+        );
+        return this.http.get<PointCoverage | PointCoverageCollection | null>(url, {params}).pipe(
             map(requireData),
-            map(coverage => coverage.ranges[parameter.parameterName]?.values[0] ?? Number.NaN)
+            map(answer => {
+                const coverages = answer.type === "CoverageCollection" ? answer.coverages : [answer];
+                const values = new Map<string, number>();
+                for (const coverage of coverages) {
+                    const range = coverage.ranges[parameter.parameterName];
+                    (coverage.domain.axes.t?.values ?? []).forEach((time, index) =>
+                        values.set(time, range?.values[index] ?? Number.NaN)
+                    );
+                }
+                return values;
+            })
         );
     }
 

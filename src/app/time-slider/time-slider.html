@@ -36,6 +36,13 @@
         (input)="select($any($event.target).valueAsNumber)"
         aria-label="Forecast hour"
     />
+    @if (ratings().length > 0) {
+        <div class="ratings" aria-hidden="true">
+            @for (rating of ratings(); track $index) {
+                <span [attr.data-rating]="rating"></span>
+            }
+        </div>
+    }
     <div class="days">
         @for (day of days(); track day.time) {
             <span class="tick" [style.left.%]="day.left">{{ day.time | date: "EEE" }}</span>

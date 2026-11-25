@@ -4,4 +4,7 @@ export interface BbqRules {
     minTemperatureK: number;
     /** Most rain in one hour that still lets the fire burn, in mm. */
     maxPrecipitationMm: number;
+    /** Local hours a barbecue can start and must end by, for the best-time suggestion. */
+    earliestHour: number;
+    latestHour: number;
 }

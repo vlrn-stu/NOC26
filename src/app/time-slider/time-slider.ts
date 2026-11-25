@@ -1,4 +1,5 @@
 import {DatePipe} from "@angular/common";
+import type {HourRating} from "../forecast/bbq-rating";
 import {Component, OnDestroy, computed, input, model, signal} from "@angular/core";
 
 /** Delay between two hours while playing. */
@@ -16,6 +17,8 @@ export class TimeSliderComponent implements OnDestroy {
     /** ISO 8601 times to choose from, sorted. */
     readonly times = input.required<string[]>();
     readonly selectedTime = model.required<string>();
+    /** Grill rating of each of `times` at the chosen place; empty when no place is chosen. */
+    readonly ratings = input<HourRating[]>([]);
 
     protected readonly index = computed(() => Math.max(0, this.times().indexOf(this.selectedTime())));
     protected readonly playing = signal(false);

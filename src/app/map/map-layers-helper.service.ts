@@ -1,51 +1,54 @@
 import {signal} from "@angular/core";
 import OlMap from "ol/Map";
 import Overlay from "ol/Overlay";
-import {Coordinate} from "ol/coordinate";
-import {toLonLat} from "ol/proj";
-import {catchError, forkJoin, map, Observable, of, Subscription} from "rxjs";
+import {fromLonLat, toLonLat} from "ol/proj";
+import {forkJoin, map, Subscription} from "rxjs";
 import {describeEdrError} from "../edr/edr-error";
 import {EdrGridSource, LOAD_ERROR_PROPERTY} from "../edr/edr-grid-source";
 import {LegendData} from "../types/legend.type";
 import {BitmapLayer} from "../visualizations/bitmap/bitmap-layer";
 
-/** One layer's value at the place the user clicked. */
-export interface PointValue {
+/** A layer with a legend, and whether it is shown. */
+export interface LegendLayer {
+    legend: LegendData;
+    visible: boolean;
+}
+
+/** One layer's values at the chosen place for every forecast hour. */
+export interface PlaceSeries {
     title: string;
     /** `parameterName` of the layer's EDR parameter. */
     parameterName: string;
-    /** The value in the data's unit; `NaN` while loading or where there is no data. */
-    raw: number;
-    /** Formatted with the layer's legend format; `undefined` while loading. */
-    value?: string;
-    error?: string;
+    /** Values in the data's unit, keyed by ISO 8601 time. */
+    values: Map<string, number>;
 }
 
-/** The place the user clicked and the values of every layer there. */
-export interface PointInfo {
+/** The place the user chose and its forecast. */
+export interface PlaceForecast {
     lon: number;
     lat: number;
-    time: string;
-    values: PointValue[];
+    /** Empty while loading or after an error. */
+    series: PlaceSeries[];
+    loading: boolean;
+    error?: string;
 }
 
 export class MapLayersHelperService {
     private readonly loadErrorsSignal = signal<string[]>([]);
     readonly loadErrors = this.loadErrorsSignal.asReadonly();
 
-    private readonly legendsSignal = signal<LegendData[]>([]);
-    readonly legends = this.legendsSignal.asReadonly();
+    private readonly legendLayersSignal = signal<LegendLayer[]>([]);
+    readonly legendLayers = this.legendLayersSignal.asReadonly();
 
     private readonly availableTimesSignal = signal<string[]>([]);
     readonly availableTimes = this.availableTimesSignal.asReadonly();
 
-    private readonly pointInfoSignal = signal<PointInfo | undefined>(undefined);
-    readonly pointInfo = this.pointInfoSignal.asReadonly();
+    private readonly placeForecastSignal = signal<PlaceForecast | undefined>(undefined);
+    readonly placeForecast = this.placeForecastSignal.asReadonly();
 
     private map?: OlMap;
-    private popup?: Overlay;
-    private clickedCoordinate?: Coordinate;
-    private pointRequest?: Subscription;
+    private marker?: Overlay;
+    private placeRequest?: Subscription;
 
     /** Keeps `loadErrors` up to date with the load errors of every EDR layer on the map. */
     public listenForLoadErrors(map: OlMap): void {
@@ -65,14 +68,27 @@ export class MapLayersHelperService {
         }
     }
 
-    /** Fills `legends` with the legends of the map's layers, bottom layer first. */
+    /** Fills `legendLayers` with the layers that have a legend, bottom layer first. */
     public collectLegends(map: OlMap): void {
-        const legends = map
-            .getAllLayers()
-            .filter(layer => layer instanceof BitmapLayer)
-            .map(layer => layer.getLegend())
-            .filter(legend => legend !== undefined);
-        this.legendsSignal.set(legends);
+        this.legendLayersSignal.set(
+            this.legendBitmapLayers(map).map(layer => ({
+                legend: layer.getLegend()!,
+                visible: layer.getVisible(),
+            }))
+        );
+    }
+
+    /** Shows or hides the layer whose legend has `title`. */
+    public setLayerVisible(title: string, visible: boolean): void {
+        if (!this.map) {
+            return;
+        }
+        this.legendBitmapLayers(this.map)
+            .find(layer => layer.getLegend()?.title === title)
+            ?.setVisible(visible);
+        this.legendLayersSignal.update(layers =>
+            layers.map(layer => (layer.legend.title === title ? {...layer, visible} : layer))
+        );
     }
 
     /**
@@ -96,88 +112,86 @@ export class MapLayersHelperService {
         });
     }
 
-    /**
-     * Shows the values of every layer that has a legend at the place the user clicks, in a popup
-     * anchored there. `getTime` gives the forecast time to ask for.
-     */
-    public listenForClicks(map: OlMap, popupElement: HTMLElement, getTime: () => string): void {
+    /** A click on the map chooses that place; `markerElement` marks the chosen place. */
+    public listenForClicks(map: OlMap, markerElement: HTMLElement): void {
         this.map = map;
-        this.popup = new Overlay({
-            element: popupElement,
-            positioning: "bottom-center",
-            offset: [0, -14],
-            stopEvent: true,
+        this.marker = new Overlay({
+            element: markerElement,
+            positioning: "center-center",
+            stopEvent: false,
         });
-        map.addOverlay(this.popup);
+        map.addOverlay(this.marker);
         map.on("singleclick", event => {
-            this.clickedCoordinate = event.coordinate;
-            this.popup?.setPosition(event.coordinate);
-            this.updatePointInfo(getTime());
+            const [lon, lat] = toLonLat(event.coordinate, map.getView().getProjection());
+            this.selectPlace(lon, lat, false);
         });
     }
 
-    /** Asks for the clicked place's values again, e.g. after the forecast time changed. */
-    public updatePointInfo(time: string): void {
-        if (!this.map || !this.clickedCoordinate) {
+    /**
+     * Chooses a place and loads the forecast of every layer with a legend there, for all
+     * `availableTimes`. With `pan`, the map also moves to the place.
+     */
+    public selectPlace(lon: number, lat: number, pan: boolean): void {
+        if (!this.map) {
             return;
         }
-        const projection = this.map.getView().getProjection();
-        const [lon, lat] = toLonLat(this.clickedCoordinate, projection);
-        const layers = this.map
-            .getAllLayers()
-            .filter(layer => layer instanceof BitmapLayer)
-            .filter(layer => layer.getLegend() !== undefined && layer.getSource() !== null);
+        const view = this.map.getView();
+        const coordinate = fromLonLat([lon, lat], view.getProjection());
+        this.marker?.setPosition(coordinate);
+        if (pan) {
+            view.animate({center: coordinate, zoom: Math.max(view.getZoom() ?? 8, 8.5), duration: 450});
+        }
 
-        const previous = this.pointInfoSignal();
-        const samePlace = previous && previous.lon === lon && previous.lat === lat;
-        // Keep the old values visible while the new ones load, so the popup does not jump.
-        this.pointInfoSignal.set({
-            lon,
-            lat,
-            time,
-            values: layers.map((layer, index) => ({
-                title: layer.getLegend()!.title,
-                parameterName: layer.getSource()!.getParameter().parameterName,
-                raw: Number.NaN,
-                value: samePlace ? previous.values[index]?.value : undefined,
-            })),
+        this.placeRequest?.unsubscribe();
+        const times = this.availableTimesSignal();
+        if (times.length === 0) {
+            this.placeForecastSignal.set({
+                lon,
+                lat,
+                series: [],
+                loading: false,
+                error: "No forecast yet",
+            });
+            return;
+        }
+        this.placeForecastSignal.set({lon, lat, series: [], loading: true});
+        const requests = this.legendBitmapLayers(this.map)
+            .filter(layer => layer.getSource() !== null)
+            .map(layer => {
+                const source = layer.getSource()!;
+                return source.getSeriesAt(lon, lat, times[0], times[times.length - 1]).pipe(
+                    map(values => ({
+                        title: layer.getLegend()!.title,
+                        parameterName: source.getParameter().parameterName,
+                        values,
+                    }))
+                );
+            });
+        this.placeRequest = forkJoin(requests).subscribe({
+            next: series => this.placeForecastSignal.set({lon, lat, series, loading: false}),
+            error: (error: unknown) =>
+                this.placeForecastSignal.set({
+                    lon,
+                    lat,
+                    series: [],
+                    loading: false,
+                    error: describeEdrError(error),
+                }),
         });
-
-        this.pointRequest?.unsubscribe();
-        const requests: Observable<PointValue>[] = layers.map(layer => {
-            const legend = layer.getLegend()!;
-            const format = legend.formatValue ?? ((value: number) => String(value));
-            const source = layer.getSource()!;
-            const parameterName = source.getParameter().parameterName;
-            return source.getValueAt(lon, lat, time).pipe(
-                map(raw => ({
-                    title: legend.title,
-                    parameterName,
-                    raw,
-                    value: Number.isNaN(raw) ? "no data" : format(raw),
-                })),
-                catchError((error: unknown) =>
-                    of({
-                        title: legend.title,
-                        parameterName,
-                        raw: Number.NaN,
-                        value: "–",
-                        error: describeEdrError(error),
-                    })
-                )
-            );
-        });
-        this.pointRequest = forkJoin(requests).subscribe(values =>
-            this.pointInfoSignal.set({lon, lat, time, values})
-        );
     }
 
-    /** Hides the popup and forgets the clicked place. */
-    public closePointInfo(): void {
-        this.pointRequest?.unsubscribe();
-        this.clickedCoordinate = undefined;
-        this.popup?.setPosition(undefined);
-        this.pointInfoSignal.set(undefined);
+    /** Forgets the chosen place. */
+    public closePlace(): void {
+        this.placeRequest?.unsubscribe();
+        this.marker?.setPosition(undefined);
+        this.placeForecastSignal.set(undefined);
+    }
+
+    private legendBitmapLayers(map: OlMap): BitmapLayer[] {
+        return map
+            .getAllLayers()
+            .filter(layer => layer instanceof BitmapLayer)
+            .filter(layer => layer.getLegend() !== undefined);
     }
 
     private edrSources(map: OlMap): EdrGridSource[] {

@@ -1,0 +1,58 @@
+<div class="chart" (pointerdown)="pick($event)" (pointermove)="pick($event)">
+    <svg [attr.viewBox]="'0 0 ' + width() + ' ' + height" preserveAspectRatio="none" aria-hidden="true">
+        @if (selectedIndex() >= 0) {
+            <rect
+                class="cursor"
+                [attr.x]="selectedIndex() * hourWidth"
+                y="0"
+                [attr.width]="hourWidth"
+                [attr.height]="height"
+            />
+        }
+        @for (day of days(); track day.time) {
+            @if (!$first) {
+                <line
+                    class="day"
+                    [attr.x1]="(day.left / 100) * width()"
+                    [attr.x2]="(day.left / 100) * width()"
+                    y1="0"
+                    [attr.y2]="height"
+                />
+            }
+        }
+        @if (freezingY(); as y) {
+            <line class="freezing" x1="0" [attr.x2]="width()" [attr.y1]="y" [attr.y2]="y" />
+        }
+        @for (bar of rainBars(); track $index) {
+            <rect
+                class="rain"
+                [attr.x]="bar.x"
+                [attr.y]="bar.y"
+                [attr.width]="hourWidth - 3"
+                [attr.height]="bar.height"
+            />
+        }
+        <path class="temperature" [attr.d]="temperaturePath()" />
+        @for (hour of hours(); track hour.time) {
+            <rect
+                class="rating"
+                [attr.data-rating]="hour.rating"
+                [attr.x]="$index * hourWidth"
+                [attr.y]="ratingTop"
+                [attr.width]="hourWidth"
+                [attr.height]="ratingHeight"
+            />
+        }
+    </svg>
+    <span class="label max" [style.top.%]="temperatureLabels().maxTop">{{
+        temperatureLabels().max
+    }}</span>
+    <span class="label min" [style.top.%]="temperatureLabels().minTop">{{
+        temperatureLabels().min
+    }}</span>
+</div>
+<div class="days">
+    @for (day of days(); track day.time) {
+        <span [style.left.%]="day.left">{{ day.time | date: "EEE d" }}</span>
+    }
+</div>

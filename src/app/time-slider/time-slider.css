@@ -93,3 +93,29 @@ input[type="range"] {
     font-size: 11px;
     opacity: 0.75;
 }
+
+/* The chosen place's grill rating for every hour, aligned with the slider. */
+.ratings {
+    display: flex;
+    height: 6px;
+    margin: 0 8px 4px;
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.ratings span {
+    flex: 1;
+    background: #3a3f4b;
+}
+
+.ratings span[data-rating="good"] {
+    background: #ff8a2b;
+}
+
+.ratings span[data-rating="rain"] {
+    background: #3d7fd9;
+}
+
+.ratings span[data-rating="cold"] {
+    background: #8fa3bf;
+}

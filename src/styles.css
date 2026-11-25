@@ -10,3 +10,24 @@ body {
 .base-map {
     filter: grayscale(1) contrast(0.85) brightness(1.08);
 }
+
+/* Zoom buttons on the right, clear of the side panel. */
+.ol-zoom {
+    top: auto !important;
+    left: auto !important;
+    right: 12px;
+    bottom: 150px;
+}
+
+.ol-zoom button {
+    width: 32px !important;
+    height: 32px !important;
+    border-radius: 8px !important;
+    background: rgba(18, 20, 26, 0.86) !important;
+    color: #fff !important;
+    font-size: 18px !important;
+}
+
+.ol-attribution {
+    border-radius: 8px 0 0 0;
+}

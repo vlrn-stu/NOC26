@@ -54,9 +54,18 @@ export interface Coverage {
     ranges: Record<string, NdArray>;
 }
 
-/** Answer of the EDR position query: the values of every parameter at one point. */
+/** One point of the EDR position query: the values of every parameter there, one per time. */
 export interface PointCoverage {
     type: "Coverage";
-    domain: {type: "Domain"; domainType: "Point" | "PointSeries"};
+    domain: {
+        type: "Domain";
+        axes: {x: ValuesAxis<number>; y: ValuesAxis<number>; t?: ValuesAxis<string>};
+    };
     ranges: Record<string, NdArray>;
+}
+
+/** A position query over several times may answer with one coverage per time. */
+export interface PointCoverageCollection {
+    type: "CoverageCollection";
+    coverages: PointCoverage[];
 }
