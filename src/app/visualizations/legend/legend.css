@@ -1,0 +1,32 @@
+:host {
+    display: block;
+    font:
+        12px/1.3 system-ui,
+        sans-serif;
+}
+
+.title {
+    margin-bottom: 4px;
+    font-weight: 600;
+}
+
+.bar {
+    height: 12px;
+    border-radius: 3px;
+    /* An outline, so the transparent "no rain" band still has an edge. */
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.25);
+}
+
+.labels {
+    position: relative;
+    height: 16px;
+    margin: 0 6px;
+}
+
+.labels span {
+    position: absolute;
+    top: 2px;
+    transform: translateX(-50%);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}

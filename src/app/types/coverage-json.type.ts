@@ -53,3 +53,10 @@ export interface Coverage {
     parameters: Record<string, CoverageParameter>;
     ranges: Record<string, NdArray>;
 }
+
+/** Answer of the EDR position query: the values of every parameter at one point. */
+export interface PointCoverage {
+    type: "Coverage";
+    domain: {type: "Domain"; domainType: "Point" | "PointSeries"};
+    ranges: Record<string, NdArray>;
+}

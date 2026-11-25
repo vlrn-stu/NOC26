@@ -19,3 +19,18 @@ export const TEMPERATURE_GRADIENT_IN_KELVIN: Gradient = [
     {value: celsius(30), color: [230, 50, 30, 255]},
     {value: celsius(40), color: [140, 0, 30, 255]},
 ];
+
+/**
+ * Hourly precipitation in mm, in radar colours (green, yellow, red) so it stands apart from the
+ * blues of cold air. Dry areas stay transparent so the temperature shows through.
+ */
+export const PRECIPITATION_GRADIENT_IN_MM: Gradient = [
+    {value: 0, color: [0, 0, 0, 0]},
+    {value: 0.1, color: [120, 230, 120, 255]},
+    {value: 0.5, color: [20, 180, 60, 255]},
+    {value: 1, color: [250, 230, 40, 255]},
+    {value: 2, color: [255, 160, 20, 255]},
+    {value: 5, color: [240, 60, 30, 255]},
+    {value: 10, color: [190, 20, 90, 255]},
+    {value: 20, color: [140, 30, 200, 255]},
+];

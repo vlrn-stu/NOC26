@@ -9,4 +9,10 @@ export const ALADIN_PARAMETERS = {
         parameterName: "temperature",
         z: "2",
     },
+    /** Precipitation that fell during the hour ending at the forecast time, in mm (kg/m²). */
+    precipitation1h: {
+        dataset: ALADIN_SLOVAKIA,
+        collectionId: "sd:SHMU-Aladin-Slovakia_single-level_3",
+        parameterName: "surfprec-total_gnd-surf_stat:acc/PT1H",
+    },
 } satisfies Record<string, EdrParameter>;

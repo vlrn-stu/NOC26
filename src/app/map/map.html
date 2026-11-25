@@ -1,5 +1,10 @@
 <div #mapContainer class="map"></div>
 
+<header class="panel title">
+    <h1>BBQ weather · Slovakia</h1>
+    <p>Click a place to see its temperature and rain.</p>
+</header>
+
 @if (mapLayersHelper.loadErrors().length > 0) {
     <div class="load-error" role="alert">
         @for (message of mapLayersHelper.loadErrors(); track $index) {
@@ -7,3 +12,41 @@
         }
     </div>
 }
+
+@if (mapLayersHelper.legends().length > 0) {
+    <aside class="panel legends">
+        @for (legend of mapLayersHelper.legends(); track legend.title) {
+            <app-legend [legend]="legend" />
+        }
+    </aside>
+}
+
+@if (mapLayersHelper.availableTimes().length > 0) {
+    <div class="panel timeline">
+        <app-time-slider [times]="mapLayersHelper.availableTimes()" [(selectedTime)]="selectedTime" />
+    </div>
+}
+
+<div #popup class="popup" [class.hidden]="!mapLayersHelper.pointInfo()">
+    @if (mapLayersHelper.pointInfo(); as info) {
+        <button
+            type="button"
+            class="close"
+            (click)="mapLayersHelper.closePointInfo()"
+            aria-label="Close"
+        >
+            ×
+        </button>
+        <div class="when">{{ info.time | date: "EEE d MMM, HH:mm" }}</div>
+        @for (value of info.values; track value.title) {
+            <div class="row">
+                <span>{{ value.title }}</span>
+                <strong [title]="value.error ?? ''">{{ value.value ?? "…" }}</strong>
+            </div>
+        }
+        @if (bbqVerdict(); as verdict) {
+            <div class="verdict" [class.good]="verdict.good">{{ verdict.text }}</div>
+        }
+        <div class="where">{{ info.lat | number: "1.2-2" }}° N, {{ info.lon | number: "1.2-2" }}° E</div>
+    }
+</div>

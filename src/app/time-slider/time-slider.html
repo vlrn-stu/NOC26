@@ -1,0 +1,44 @@
+<div class="head">
+    <button
+        type="button"
+        class="play"
+        (click)="togglePlay()"
+        [attr.aria-label]="playing() ? 'Pause' : 'Play'"
+    >
+        @if (playing()) {
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 3h3v10H4zM9 3h3v10H9z" /></svg>
+        } @else {
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5 3l8 5-8 5z" /></svg>
+        }
+    </button>
+    <button type="button" (click)="step(-1)" [disabled]="index() === 0" aria-label="Previous hour">
+        ‹
+    </button>
+    <div class="time">
+        <span class="day">{{ selectedTime() | date: "EEEE d MMM" }}</span>
+        <span class="hour">{{ selectedTime() | date: "HH:mm" }}</span>
+    </div>
+    <button
+        type="button"
+        (click)="step(1)"
+        [disabled]="index() === times().length - 1"
+        aria-label="Next hour"
+    >
+        ›
+    </button>
+</div>
+<div class="track">
+    <input
+        type="range"
+        min="0"
+        [max]="times().length - 1"
+        [value]="index()"
+        (input)="select($any($event.target).valueAsNumber)"
+        aria-label="Forecast hour"
+    />
+    <div class="days">
+        @for (day of days(); track day.time) {
+            <span class="tick" [style.left.%]="day.left">{{ day.time | date: "EEE" }}</span>
+        }
+    </div>
+</div>

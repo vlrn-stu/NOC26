@@ -5,3 +5,8 @@ body {
     height: 100%;
     overflow: hidden;
 }
+
+/* The OpenStreetMap background in grey, so green forests don't read as rain. */
+.base-map {
+    filter: grayscale(1) contrast(0.85) brightness(1.08);
+}

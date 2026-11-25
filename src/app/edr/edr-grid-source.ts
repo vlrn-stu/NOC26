@@ -1,5 +1,6 @@
 import {Extent} from "ol/extent";
 import {ProjectionLike, transformExtent} from "ol/proj";
+import {Signal} from "@angular/core";
 import Source from "ol/source/Source";
 import {map, Observable, tap} from "rxjs";
 import {describeEdrError} from "./edr-error";
@@ -24,7 +25,9 @@ export class EdrGridSource extends Source {
     constructor(
         private readonly edrApiService: EdrApiService,
         /** What to fetch, e.g. one of `ALADIN_PARAMETERS`. */
-        private readonly parameter: EdrParameter
+        private readonly parameter: EdrParameter,
+        /** Forecast time to show (ISO 8601); the layer redraws when the map renders after a change. */
+        private readonly time: Signal<string>
     ) {
         super({attributions: parameter.dataset.attribution});
     }
@@ -54,14 +57,34 @@ export class EdrGridSource extends Source {
      * Fetches the parameter's grid inside `bbox`. Also updates `getLoadError()`: it is set when
      * the request fails and cleared when data arrives.
      */
-    getGridData(bbox: LonLatBbox): Observable<GridData> {
-        return this.edrApiService.getCube(this.parameter, bbox).pipe(
+    getGridData(bbox: LonLatBbox, time: string): Observable<GridData> {
+        return this.edrApiService.getCube(this.parameter, bbox, time).pipe(
             map(coverage => GridData.fromCoverage(coverage, this.parameter.parameterName)),
             tap({
                 next: () => this.set(LOAD_ERROR_PROPERTY, undefined),
                 error: (error: unknown) => this.set(LOAD_ERROR_PROPERTY, describeEdrError(error)),
             })
         );
+    }
+
+    /** What the source fetches. */
+    getParameter(): EdrParameter {
+        return this.parameter;
+    }
+
+    /** The forecast time the layer should show now. */
+    getTime(): string {
+        return this.time();
+    }
+
+    /** Forecast times the parameter has data for. */
+    getAvailableTimes(): Observable<string[]> {
+        return this.edrApiService.getTimes(this.parameter);
+    }
+
+    /** The parameter's value at one point at `time`, `NaN` where there is no data. */
+    getValueAt(lon: number, lat: number, time: string): Observable<number> {
+        return this.edrApiService.getPointValue(this.parameter, lon, lat, time);
     }
 
     /**

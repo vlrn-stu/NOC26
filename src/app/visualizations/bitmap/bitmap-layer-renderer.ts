@@ -144,7 +144,9 @@ export class BitmapLayerRenderer extends LayerRenderer<BitmapLayer> {
         const source = this.getLayer().getSource();
         const projection = frameState.viewState.projection;
         const bbox = source?.getRequestBbox(frameState.extent!, projection);
-        const bboxKey = bbox?.join(",") ?? "outside";
+        const time = source?.getTime() ?? "";
+        // The old grid stays on screen until the new one arrives, so changing the time does not flicker.
+        const bboxKey = bbox ? `${bbox.join(",")}@${time}` : "outside";
         if (bboxKey === this.requestedBboxKey) {
             return;
         }
@@ -155,7 +157,7 @@ export class BitmapLayerRenderer extends LayerRenderer<BitmapLayer> {
             this.indexCount = 0;
             return;
         }
-        this.request = source.getGridData(bbox).subscribe({
+        this.request = source.getGridData(bbox, time).subscribe({
             next: grid => {
                 this.uploadGrid(grid, projection);
                 // Asks the map to render again, now with the new data.
